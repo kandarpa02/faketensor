@@ -1,5 +1,6 @@
+# faketensor/array.py
+
 from ._typing import Array
-import numpy as np
 from .functions import (
     add,
     multiply,
@@ -8,23 +9,63 @@ from .functions import (
     divide,
     power
 )
+from ..backend.backend import xp    # unified backend (numpy OR cupy)
+
+
+# -------------------------
+# Backend-aware array casting
+# -------------------------
 
 def as_ndarray(x):
-    if isinstance(x, (np.ndarray, np.integer, np.floating, int, float, bool, list)):
-        return np.asarray(x)
-    elif isinstance(x, NDarray):
-        return x.np
-    else:
-        raise TypeError(f"{type(x)} is not supported as input")
+    """
+    Convert input to backend array (numpy OR cupy) while respecting NDarray.
+    """
+    lib = xp()
+
+    # If it's already a backend ndarray
+    if isinstance(x, lib.ndarray):
+        return x
+
+    # Python scalars
+    if isinstance(x, (int, float, bool)):
+        return lib.asarray(x)
+
+    # Lists or tuples
+    if isinstance(x, (list, tuple)):
+        return lib.asarray(x)
+
+    # If user passed a raw numpy array → convert to backend array
+    try:
+        import numpy as _np
+        if isinstance(x, _np.ndarray):
+            return lib.asarray(x)
+    except Exception:
+        pass
+
+    # Our NDarray
+    if isinstance(x, NDarray):
+        return lib.asarray(x.np)
+    
+    if lib.isscalar(x):            
+        return lib.array(x)
+
+    raise TypeError(f"{type(x)} not supported as input")
+
 
 def as_nd(x):
     return NDarray(x)
 
+
+# -------------------------
+# NDarray class
+# -------------------------
+
 class NDarray(Array):
     def __init__(self, data, dtype=None) -> None:
         super().__init__()
-        self.np = as_ndarray(data).astype(dtype) if dtype else as_ndarray(data)
-    
+        arr = as_ndarray(data)
+        self.np = arr.astype(dtype) if dtype else arr
+
     # -------------------------
     # Basic attributes
     # -------------------------
@@ -60,9 +101,9 @@ class NDarray(Array):
 
     def __float__(self):
         return float(self.np)
-    
+
     def __int__(self):
-        return float(self.np)
+        return int(self.np)
 
     # -------------------------
     # Unary ops
@@ -74,44 +115,34 @@ class NDarray(Array):
     # Binary ops (forward)
     # -------------------------
     def __add__(self, other):
-        other = as_nd(other)
-        return add(self, other)
+        return add(self, as_nd(other))
 
     def __sub__(self, other):
-        other = as_nd(other)
-        return subtract(self, other)
+        return subtract(self, as_nd(other))
 
     def __mul__(self, other):
-        other = as_nd(other)
-        return as_nd(multiply(self, other))
+        return multiply(self, as_nd(other))
 
     def __truediv__(self, other):
-        other = as_nd(other)
-        return divide(self, other)
-    
+        return divide(self, as_nd(other))
+
     def __pow__(self, other):
-        other = as_nd(other)
-        return power(self, other)
+        return power(self, as_nd(other))
 
     # -------------------------
     # Binary ops (reverse)
     # -------------------------
     def __radd__(self, other):
-        other = as_nd(other)
-        return add(other, self)
+        return add(as_nd(other), self)
 
     def __rsub__(self, other):
-        other = as_nd(other)
-        return subtract(other, self)
+        return subtract(as_nd(other), self)
 
     def __rmul__(self, other):
-        other = as_nd(other)
-        return multiply(other, self)
+        return multiply(as_nd(other), self)
 
     def __rtruediv__(self, other):
-        other = as_nd(other)
-        return divide(other, self)
-    
+        return divide(as_nd(other), self)
+
     def __rpow__(self, other):
-        other = as_nd(other)
-        return power(self, other)
+        return power(as_nd(other), self)

@@ -2,6 +2,7 @@ from dataclasses import dataclass
 from typing import Callable, Any
 from contextlib import contextmanager
 from .utils import Meta
+from ...backend import backend as b
 
 TRACING = False
 JIT_STACK = []
@@ -20,6 +21,7 @@ def element_wise(a, b, name, func):
     out = FT_Tracer(
         shape,
         dtype,
+        # device=a.dtype,
         name=name,
         func=func,
         parents=(a, b)
@@ -32,6 +34,7 @@ def vectorize(a, b, name, func):
     out = FT_Tracer(
         shape,
         dtype,
+        # device=a.dtype,
         name=name,
         func=func,
         parents=(a, b)
@@ -39,9 +42,10 @@ def vectorize(a, b, name, func):
     return out
 
 class FT_Tracer:
-    def __init__(self, shape:tuple, dtype:str, name:str, func:Callable=lambda:None, parents:tuple=()) -> None:
+    def __init__(self, shape:tuple, dtype:str, name:str='', func:Callable=lambda:None, parents:tuple=(), device='auto') -> None:
         self.shape = shape
         self.dtype = dtype
+        self.lib = b.get_device()
         self.name = name
         self.func = func
         self.parents = parents
@@ -65,6 +69,22 @@ class FT_Tracer:
     
     def __truediv__(self, other):
         return element_wise(self, other, 'div', lambda a, b: a / b)
+    
+    def __neg__(self):
+        return FT_Tracer(self.shape, self.dtype, 'neg', lambda a: -a)
+    
+    def __pow__(self, other):
+        return FT_Tracer(self.shape, self.dtype, 'pow', lambda a, b: a ** b)
+    
+    @staticmethod
+    def F_log(a):
+        lib = a.lib
+        return FT_Tracer(a.shape, a.dtype, 'log', lambda a: lib.log(a))
+    
+    @staticmethod
+    def F_log10(a):
+        lib = a.lib
+        return FT_Tracer(a.shape, a.dtype, 'log10', lambda a: lib.log10(a))
     
     # def __matmul__(self, other):
     #     return vectorize(self, other, 'matmul', )

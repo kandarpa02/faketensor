@@ -40,14 +40,17 @@ class Node:
 
 
 class function:
-    def __init__(self, fun):
+    def __init__(self, fun, static_fun):
         self.fun = fun
-        self.graph = None
+        self.static_fun = static_fun
 
     def __call__(self, *args):
+
+        ## ignore this part for a time
         next_name()
         static_args = [FT_Tracer(arg.shape, arg.dtype.__str__() , name) for arg in args]
-        
+        static_output = self.static_fun(*static_args)
+        ## ignore this part for a time
 
         global _RECORDING
         prev = _RECORDING

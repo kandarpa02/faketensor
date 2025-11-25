@@ -15,26 +15,12 @@ from faketensor import ndarray as nd
 
 # print('out:\n',e(2., 3.))
 
-a = nd.array(4.)
-b = nd.array(5.)
-g = ft.grad(lambda x, y:x/y)
-# print(g(a, b))
+a = nd.array(5.)
+g = ft.grad(lambda x, y=4:x**y)
+g2 = ft.grad(g)
+g3 = ft.grad(g2)
 
-name = None
-current_id = 0
-
-def gen_name():
-    global name
-    global current_id
-    import string
-    import random
-    depth = 10000000
-    current_alp = random.choice(string.ascii_letters)
-    
-    name = f'{current_alp}{current_id}'
-    _c = 1 + int(name[-1])
-    current_id = _c if not _c>depth else 0
-
-for i in range(10):
-    gen_name()
-    print(name)
+print(a**4)
+print('dx ', g(a))
+print('d2x ', g2(a))
+print('d3x ', g3(a))
