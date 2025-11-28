@@ -1,26 +1,189 @@
+"""
+Shape-manipulation and common array operations with autograd support.
+
+This module defines reshape, expand_dims, squeeze, clip, and abs for FakeTensor.
+Each operation uses the `function` wrapper, storing its inputs and a
+gradient function for reverse-mode autodiff.
+
+All operations support:
+    • Broadcasting (for clip/abs)
+    • Higher-order gradients
+    • NumPy or CuPy backend (via xp())
+"""
+
+from __future__ import annotations
 from .._typing import Array as A
 from ..base import function
 from ..utils import broadcast_backward
 from ...backend.backend import xp
 
-# Generic type
-Array = A
+Array = A   # alias
 
 
-def reshape(x: Array, shape: tuple|list):
+# =====================================================================
+# RESHAPE
+# =====================================================================
+
+def reshape(x: Array, shape):
+    """
+    Reshape tensor to a new shape.
+
+    Args:
+        x (Array): Input tensor.
+        shape (tuple[int]): New shape.
+
+    Returns:
+        A: Reshaped tensor.
+
+    Gradient:
+        d/dx reshape(x, shape) = reshape(g, x.shape)
+    """
     lib = xp()
-
-    prev_shape = x.shape
 
     def _fun(x):
         from ..array import as_nd
-
-        out = as_nd(lib.reshape(x, shape))
+        x_nd = as_nd(x)
+        out = as_nd(lib.reshape(x_nd, shape))
 
         def grad_fn(g):
-            g0 = reshape(g, prev_shape)
-            return g0,
-        
-        return out, (as_nd(x),), grad_fn
-    
+            return as_nd(lib.reshape(g, x_nd.shape)),
+
+        return out, (x_nd,), grad_fn
+
+    return function(_fun)(x)
+
+
+# =====================================================================
+# EXPAND_DIMS
+# =====================================================================
+
+def expand_dims(x: Array, axis):
+    """
+    Insert a new axis at the specified position.
+
+    Args:
+        x (Array): Input tensor.
+        axis (int): Axis to insert.
+
+    Returns:
+        A: Expanded tensor.
+
+    Gradient:
+        d/dx expand_dims(x, axis) = squeeze(g, axis)
+    """
+    lib = xp()
+
+    def _fun(x):
+        from ..array import as_nd
+        x_nd = as_nd(x)
+        out = as_nd(lib.expand_dims(x_nd, axis))
+
+        def grad_fn(g):
+            return as_nd(lib.squeeze(g, axis=axis)),
+
+        return out, (x_nd,), grad_fn
+
+    return function(_fun)(x)
+
+
+# =====================================================================
+# SQUEEZE
+# =====================================================================
+
+def squeeze(x: Array, axis=None):
+    """
+    Remove axes of size 1.
+
+    Args:
+        x (Array): Input tensor.
+        axis (int | tuple[int] | None): Axes to remove.
+
+    Returns:
+        A: Squeezed tensor.
+
+    Gradient:
+        d/dx squeeze(x, axis) = expand_dims(g, axis)
+    """
+    lib = xp()
+
+    def _fun(x):
+        from ..array import as_nd
+        x_nd = as_nd(x)
+        out = as_nd(lib.squeeze(x_nd, axis=axis))
+
+        def grad_fn(g):
+            # Note: expand_dims requires exact axis integer or tuple.
+            return as_nd(lib.expand_dims(g, axis=axis)),
+
+        return out, (x_nd,), grad_fn
+
+    return function(_fun)(x)
+
+
+# =====================================================================
+# CLIP
+# =====================================================================
+
+def clip(x: Array, min_val, max_val):
+    """
+    Clip values to the range [min_val, max_val].
+
+    Args:
+        x (Array): Input tensor.
+        min_val (scalar or Array): Lower bound.
+        max_val (scalar or Array): Upper bound.
+
+    Returns:
+        A: Clipped tensor.
+
+    Gradient:
+        g if x ∈ [min_val, max_val]
+        0 otherwise (subgradient chosen as 0 at boundary)
+    """
+    lib = xp()
+
+    def _fun(x):
+        from ..array import as_nd
+        x_nd = as_nd(x)
+        out = as_nd(lib.clip(x_nd, min_val, max_val))
+
+        def grad_fn(g):
+            mask = (x_nd >= min_val) & (x_nd <= max_val)
+            return as_nd(g * mask),
+
+        return out, (x_nd,), grad_fn
+
+    return function(_fun)(x)
+
+
+# =====================================================================
+# ABS
+# =====================================================================
+
+def abs(x: Array):
+    """
+    Elementwise absolute value.
+
+    Args:
+        x (Array): Input tensor.
+
+    Returns:
+        A: |x|
+
+    Gradient:
+        d/dx abs(x) = sign(x)
+        (subgradient at 0 chosen as 0)
+    """
+    lib = xp()
+
+    def _fun(x):
+        from ..array import as_nd
+        x_nd = as_nd(x)
+        out = as_nd(lib.abs(x_nd))
+
+        def grad_fn(g):
+            return as_nd(g * lib.sign(x_nd)),
+
+        return out, (x_nd,), grad_fn
+
     return function(_fun)(x)

@@ -1,16 +1,9 @@
 # faketensor/array.py
 
 from ._typing import Array
-from .functions import (
-    add,
-    multiply,
-    subtract,
-    negative,
-    divide,
-    power
-)
 from ..backend.backend import xp    # unified backend (numpy OR cupy)
-
+from .functions import *
+from typing import Optional
 
 # -------------------------
 # Backend-aware array casting
@@ -76,6 +69,10 @@ class NDarray(Array):
     @property
     def shape(self):
         return self.np.shape
+    
+    @property
+    def ndim(self):
+        return self.np.ndim
 
     def __len__(self):
         return len(self.np)
@@ -122,6 +119,7 @@ class NDarray(Array):
     # Unary ops
     # -------------------------
     def __neg__(self):
+        from ..src.functions import negative
         return negative(self)
 
     # -------------------------
@@ -141,6 +139,16 @@ class NDarray(Array):
 
     def __pow__(self, other):
         return power(self, as_nd(other))
+    
+    def __matmul__(self, other):
+        return matmul(self, other)
+
+    @property
+    def T(self):
+        return transpose(self)
+    
+    def sum(self, axis:Optional[tuple[int]]=None, keepdims=False):
+        return sum(self, axis, keepdims)
 
     # -------------------------
     # Binary ops (reverse)
