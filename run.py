@@ -4,6 +4,18 @@ import faketensor as ft
 from faketensor import ndarray as nd
 from faketensor import functions as f
 
+a = nd.array(4.)
+b = nd.array(3.)
+
+# @ft.jit.trace
+def fn(a, b):
+    return (lambda x, y:(x * y)+x)(a, b)
+
+print(fn(a, b))
+
+print(ft.jit.trace(ft.grad(lambda x, y:(x * y)+x))(a, b))
+
+
 # a = FT_Tracer((), 'float32', 'a')
 # b = FT_Tracer((), 'float32', 'b')
 # c = FT_Tracer((), 'float32', 'c')
@@ -16,13 +28,4 @@ from faketensor import functions as f
 
 # print('out:\n',e(nd.array(4.), nd.array(3.)))
 
-a = nd.array(4.)
-b = nd.array(3.)
-
-@ft.jit.trace
-def fn(a, b):
-    return (lambda x, y:(x * y)+x)(a, b)
-
-print(fn(a, b))
-
-print(ft.jit.trace(ft.grad(lambda x, y:(x * y)+x))(a, b))
+import numpy as np

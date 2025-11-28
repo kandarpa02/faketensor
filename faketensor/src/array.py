@@ -83,6 +83,12 @@ class NDarray(Array):
     def astype(self, dtype):
         """Return a new NDarray with the same values, different dtype."""
         return NDarray(self.np, dtype=dtype)
+    
+    def __hash__(self):
+        return id(self)   # identity-based hashing
+
+    def __eq__(self, other):
+        return self is other
 
     # -------------------------
     # Display helpers
@@ -104,6 +110,13 @@ class NDarray(Array):
 
     def __int__(self):
         return int(self.np)
+    
+    # -------------------------
+    # Array makers
+    # -------------------------
+
+    def full_like(self, val, dtype=None):
+        return NDarray(xp().full_like(self.np, val, dtype=dtype))
 
     # -------------------------
     # Unary ops
