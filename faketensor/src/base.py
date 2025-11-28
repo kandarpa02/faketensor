@@ -3,8 +3,8 @@ from contextlib import contextmanager
 from dataclasses import dataclass
 import numpy as np
 from .utils import broadcast_backward
-from .jit.placeholder import FT_Tracer
-from .jit.utils import next_name, name
+from .jit.placeholder import FT_Tracer, trace_mode
+from .jit.utils import next_name
 from ._typing import Array 
 
 _RECORDING = True
@@ -46,11 +46,15 @@ class function:
 
     def __call__(self, *args):
 
-        ## ignore this part for a time
         next_name()
-        static_args = [FT_Tracer(arg.shape, arg.dtype.__str__() , name) for arg in args]
+        def assign(arg):
+            from .jit.utils import name
+            next_name()
+            return FT_Tracer(arg.shape, arg.dtype.__str__() , name)
+        
+        static_args = [assign(arg) for arg in args]
+
         static_output = self.static_fun(*static_args)
-        ## ignore this part for a time
 
         global _RECORDING
         prev = _RECORDING
@@ -88,5 +92,7 @@ class function:
         t = active_tape()
         if t is not None and _RECORDING:
             t.append(Node(out, parents, grad_fn))
+        
+        from .jit.placeholder import TRACING
 
-        return out
+        return out if not TRACING else static_output

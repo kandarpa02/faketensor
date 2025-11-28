@@ -185,3 +185,4 @@ def power(x: Array, y: Array):
         return x ** y
 
     return function(_fun, static_fun)(x, y)
+

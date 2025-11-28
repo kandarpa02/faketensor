@@ -1,6 +1,10 @@
 from .placeholder import FT_Tracer
-from typing import NamedTuple, List
-import numpy as np
+from typing import NamedTuple, List, Callable
+
+
+# ============================================================
+# Topological sort (ONLY FT_Tracer nodes)
+# ============================================================
 
 def topo_sort(node):
     order = []
@@ -10,64 +14,100 @@ def topo_sort(node):
         if id(n) in visited:
             return
         visited.add(id(n))
+
+        # skip non-tracers entirely
+        if not isinstance(n, FT_Tracer):
+            return
+
         for p in n.parents:
             dfs(p)
+
         order.append(n)
 
     dfs(node)
     return order
 
 
-Instruction = NamedTuple("Instruction", [
-    ("func", callable),
-    ("parent_ids", list[int]),
-    ("out_id", int),
-])
+# ============================================================
+# Instruction
+# ============================================================
 
+class Instruction(NamedTuple):
+    func: Callable
+    parent_ids: List[int]
+    out_id: int
+
+
+# ============================================================
+# CompiledFunction
+# ============================================================
 
 class CompiledFunction:
-    def __init__(self, out_index, instrs, var_indices, num_nodes):
+    def __init__(self, out_index, instrs, var_indices, num_slots):
         self.out_index = out_index
         self.instrs = instrs
         self.var_indices = var_indices
-        self.num_nodes = num_nodes
+        self.num_slots = num_slots
 
     def __call__(self, *args):
-        buf = [None] * self.num_nodes
+        # Buffer holds intermediate real NDArray values (not tracers)
+        buf = [None] * self.num_slots
 
-        # fill variable values
+        # 1) Assign input args to their buffer slots
         for idx, val in zip(self.var_indices, args):
             buf[idx] = val
 
-        # evaluate instructions
-        for func, parent_ids, out_id in self.instrs:
-            if len(parent_ids) == 0:
-                continue
-            elif len(parent_ids) == 1:
-                buf[out_id] = func(buf[parent_ids[0]])
-            else:
-                buf[out_id] = func(*(buf[p] for p in parent_ids))
+        # 2) Execute instructions in topological order
+        for instr in self.instrs:
+            func = instr.func
+            pids = instr.parent_ids
 
+            # Gather arguments for this node
+            real_args = [buf[p] for p in pids]
+
+            # Execute the primitive (real ND ops)
+            buf[instr.out_id] = func(*real_args)
+
+        # 3) Return output
         return buf[self.out_index]
 
+
+# ============================================================
+# FT_Function
+# ============================================================
 
 class FT_Function(NamedTuple):
     out: FT_Tracer
     variables: List[FT_Tracer]
 
-    def compile(self):
+    def compile(self) -> CompiledFunction:
+        # 1) Topo sort of FT_Tracer graph
         nodes = topo_sort(self.out)
-        num_nodes = len(nodes)
 
+        # 2) Assign slots only to tracer nodes
         index = {id(n): i for i, n in enumerate(nodes)}
+        print("IDX\n", index)
+
+        # variable indices in buf[]
         var_indices = [index[id(v)] for v in self.variables]
 
         instrs = []
+
+        # 3) Build IR instructions
         for n in nodes:
+            # variables have no func
             if n in self.variables:
                 continue
-            pid = [index[id(p)] for p in n.parents]
-            instrs.append((n.func, pid, index[id(n)]))
+
+            # Parents that are FT_Tracer
+
+            pids = [index.get(id(p), 0) for p in n.parents]
+                
+            print('PID\n', pids)
+
+            instrs.append(Instruction(n.func, pids, index[id(n)]))
 
         out_index = index[id(self.out)]
-        return CompiledFunction(out_index, instrs, var_indices, num_nodes)
+        num_slots = len(nodes)
+
+        return CompiledFunction(out_index, instrs, var_indices, num_slots)

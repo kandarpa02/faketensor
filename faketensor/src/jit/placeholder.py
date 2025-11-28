@@ -45,7 +45,7 @@ class FT_Tracer:
     def __init__(self, shape:tuple, dtype:str, name:str='', func:Callable=lambda:None, parents:tuple=(), device='auto') -> None:
         self.shape = shape
         self.dtype = dtype
-        self.lib = b.get_device()
+        self.lib = b.xp()
         self.name = name
         self.func = func
         self.parents = parents
@@ -59,22 +59,22 @@ class FT_Tracer:
     def __str__(self): return self.__repr__()
 
     def __add__(self, other):
-        return element_wise(self, other, 'add', lambda a, b: a + b)
+        return element_wise(self, other, 'add', lambda a, b: self.lib.add(a, b))
     
     def __mul__(self, other):
-        return element_wise(self, other, 'mul', lambda a, b: a * b)
+        return element_wise(self, other, 'mul', lambda a, b: self.lib.multiply(a, b))
 
     def __sub__(self, other):
-        return element_wise(self, other, 'sub', lambda a, b: a - b)
+        return element_wise(self, other, 'sub', lambda a, b: self.lib.subtract(a, b))
     
     def __truediv__(self, other):
-        return element_wise(self, other, 'div', lambda a, b: a / b)
+        return element_wise(self, other, 'div', lambda a, b: self.lib.divide(a, b))
     
     def __neg__(self):
-        return FT_Tracer(self.shape, self.dtype, 'neg', lambda a: -a)
+        return FT_Tracer(self.shape, self.dtype, 'neg', lambda a: self.lib.negative(a), (self,))
     
     def __pow__(self, other):
-        return FT_Tracer(self.shape, self.dtype, 'pow', lambda a, b: a ** b)
+        return FT_Tracer(self.shape, self.dtype, 'pow', lambda a, b: self.lib.power(a, b), (self, other))
     
     @staticmethod
     def F_log(a):
