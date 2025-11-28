@@ -1,8 +1,6 @@
 from .._typing import Array as A
 from ..base import function
 from ..utils import broadcast_backward
-from ..jit.placeholder import FT_Tracer
-from ..jit.utils import name
 from ...backend.backend import xp
 from .primitive_array_ops import reshape
 # Generic type
@@ -24,9 +22,6 @@ def sum(x: Array, axis=None, keepdims=False):
         
         return out, (as_nd(x),), grad_fn
     
-    def static_fun(x):
-        return FT_Tracer(shape_, x.dtype, 'sum', lambda x: lib.sum(x, axis=axis, keepdims=keepdims))
-    
-    return function(_fun, static_fun)(x)
+    return function(_fun)(x)
 
 

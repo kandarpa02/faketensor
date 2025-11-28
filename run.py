@@ -1,5 +1,4 @@
-from faketensor.src.jit.placeholder import FT_Tracer
-from faketensor.src.jit.executor import FT_Function
+
 import faketensor as ft 
 from faketensor import ndarray as nd
 from faketensor import functions as f
@@ -13,7 +12,7 @@ def fn(a, b):
 
 print(fn(a, b))
 
-print(ft.jit.trace(ft.grad(lambda x, y:(x * y)+x))(a, b))
+print(ft.grad(lambda x, y:(x * y)+x)([a, b]))
 
 
 # a = FT_Tracer((), 'float32', 'a')

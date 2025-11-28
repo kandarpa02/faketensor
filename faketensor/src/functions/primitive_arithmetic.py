@@ -1,8 +1,6 @@
 from .._typing import Array as A
 from ..base import function
 from ..utils import broadcast_backward
-from ..jit.placeholder import FT_Tracer
-from ..jit.utils import name
 from ...backend.backend import xp
 
 # Generic type
@@ -27,10 +25,7 @@ def add(x: Array, y: Array):
         out = as_nd(lib.add(x, y))
         return out, (as_nd(x), as_nd(y)), grad_fn
 
-    def static_fun(x: FT_Tracer, y: FT_Tracer):
-        return x + y
-
-    return function(_fun, static_fun)(x, y)
+    return function(_fun)(x, y)
 
 
 # ============================================================
@@ -51,10 +46,7 @@ def subtract(x: Array, y: Array):
         out = as_nd(lib.subtract(x, y))
         return out, (as_nd(x), as_nd(y)), grad_fn
 
-    def static_fun(x: FT_Tracer, y: FT_Tracer):
-        return x - y
-
-    return function(_fun, static_fun)(x, y)
+    return function(_fun)(x, y)
 
 
 # ============================================================
@@ -74,10 +66,8 @@ def negative(x: Array):
         out = as_nd(lib.negative(x))
         return out, (as_nd(x),), grad_fn
 
-    def static_fun(x: FT_Tracer):
-        return -x
 
-    return function(_fun, static_fun)(x)
+    return function(_fun)(x)
 
 
 # ============================================================
@@ -98,11 +88,8 @@ def multiply(x: Array, y: Array):
             return g1, g2
 
         return out, (as_nd(x), as_nd(y)), grad_fn
-
-    def static_fun(x: FT_Tracer, y: FT_Tracer):
-        return x * y
-
-    return function(_fun, static_fun)(x, y)
+    
+    return function(_fun)(x, y)
 
 
 # ============================================================
@@ -127,10 +114,7 @@ def divide(x: Array, y: Array):
 
         return out, (as_nd(x), as_nd(y)), grad_fn
 
-    def static_fun(x: FT_Tracer, y: FT_Tracer):
-        return x / y
-
-    return function(_fun, static_fun)(x, y)
+    return function(_fun)(x, y)
 
 
 # ============================================================
@@ -150,10 +134,7 @@ def log(x: Array):
 
         return out, (as_nd(x),), grad_fn
 
-    def static_fun(x: FT_Tracer):
-        return FT_Tracer(x.shape, x.dtype, name)
-
-    return function(_fun, static_fun)(x)
+    return function(_fun)(x)
 
 
 # ============================================================
@@ -181,8 +162,5 @@ def power(x: Array, y: Array):
 
         return out, (as_nd(x), as_nd(y)), grad_fn
 
-    def static_fun(x: FT_Tracer, y: FT_Tracer):
-        return x ** y
-
-    return function(_fun, static_fun)(x, y)
+    return function(_fun)(x, y)
 
